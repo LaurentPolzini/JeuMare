@@ -1,4 +1,6 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*- 
+import os
+
 
 PV : str = '○' # Pion Vide
 PP : str = '☻' # Pion Plein
@@ -22,7 +24,7 @@ grille_depart = [[PP, PP, PP, PP, PP, PP, PV],
                  [PP, PV, PV, PV, PV, PV, PV]]
 
 
-grille_milieu = [[PP, CV, PP, CV, CV, CV, CV],
+grille_milieu = [[PP, PP, PP, CV, CV, CV, CV],
                  [CV, PP, CV, CV, PP, PV, PV], 
                  [CV, CV, CV, PP, PV, PV, CV], 
                  [CV, PP, CV, CV, PV, PV, CV],
@@ -60,9 +62,8 @@ def est_dans_grille(ligne : str, colonne : int) -> bool:
     
     return (ord('A') <= ord(ligne) <= ord('G') and \
             ord('1') <= ord(colonne) <= ord('7'))
-        
 
-        
+
 """
     Fonction ayant pour but de vérifier le bon formatage de l'utilisateur lorsqu'il entre
         des informations.
@@ -76,7 +77,6 @@ def est_au_bon_format(coord : str) -> bool: #compare le code Ascii et retourne u
         (48 <= ord(coord[1]) <= 57)
 
 
-
 """
     Fonction demandant à l'utilisateur de saisir des coordonnées. Il va sans dire qu'elles
         appartiendront à la grille -nous utiliserons les fonctions précédentes-.
@@ -84,10 +84,18 @@ def est_au_bon_format(coord : str) -> bool: #compare le code Ascii et retourne u
         
     Modifications sur cette fonction: ajout de 2 parametres: grille et joueur pour etre
         sur que le joueur a saisie une coordonnée d'un de ses pions.
+    
+    Autre modification: ajout de la possibilité de sauvegarder une partie
+        LA SAUVEGARDE EST ENREGISTREE DANS LE DOSSIER COURANT DU FICHIER PYTHON
 """
 def saisir_coord(grille, joueur) -> str:
-    coord = str(input("Entrez une coordonnée d'un de vos pions (entre A1 et G7): ")).upper()
+    coord = str(input("Entrez une coordonnée d'un de vos pions (entre A1 et G7) (save ou abandonner): ")).upper()
 
+    if coord == "SAVE":
+        sauvegarde_partie(grille, joueur)
+    
+    elif coord == "ABANDONNER":
+        return -1
 
     while not (est_au_bon_format(coord) and est_dans_grille(coord[0], coord[1])):
         coord = str(input("Entrez une coordonnée d'un de vos pions (entre A1 et G7): ")).upper()
@@ -101,9 +109,19 @@ def saisir_coord(grille, joueur) -> str:
     return coord
 
 
-# Retourne le contenu de la case entrée
-def case(grille, coord) -> str:
-    return (grille[ord(coord[0].upper()) - 65][ord(coord[1]) - 49])
+
+
+"""
+    Pour eviter les effets de bords
+"""
+def copie_grille(grille):
+    nouvelle_grille = []
+    for i in range(7):
+        nouvelle_grille.append([])
+        for j in range(7):
+            nouvelle_grille[i].append(grille[i][j])
+    
+    return nouvelle_grille
 
 
 
@@ -129,10 +147,55 @@ def affiche_grille(grille):
     print("\n")
     print("\nJoueur 1: ○        Joueur 2: ☻ \n")
 
+
+########  ATELIER 3 ########   
+
+
+
 """
-    Decroit le nombre de pion du joueur adverse de "joueur"
-        Utilisé dans le mouvement saut
+    Fonction affichant 2 grilles l'une a cote de l'autre. Utile pour un "avant / apres"
 """
+def affiche_deux_grilles(grille1, grille2):
+    print("\nGrilles avant                         Après")
+    for j in range(2):
+        for i in range(1, 8):
+            print(f"\t| {i}", end="")
+        print("\t \t", end = "")
+    
+    for i in range(65, 72):
+        print("\n", end="")
+        for j in range(2):
+            for k in range(8):
+                print("----", end = "")
+            print("--\t", end="")
+        print("\n", end = "")
+        
+        
+        print(chr(i), end = "")
+        for j in range(1, 8):
+            print("\t| {}" .format(grille1[i-65][j-1]), end = "")
+        print(f"\t \t{chr(i)}", end = "")
+        for j in range(1, 8):
+            print("\t| {}" .format(grille2[i-65][j-1]), end = "")
+            
+            
+    print("\n")
+    print("\nJoueur 1: ○        Joueur 2: ☻ \n")
+
+
+# Retourne le contenu de la case entrée
+def case(grille, coord) -> str:
+    return (grille[ord(coord[0].upper()) - 65][ord(coord[1]) - 49])
+
+
+# Retourne les pions de l'opposant
+def get_pion_opposant(joueur):
+    if joueur == 1:
+        return PP # les pions opposés aux pions vides sont les pions pleins
+    return PV
+
+
+# decroit le nombre de pion du joueur adverse de "joueur"
 def decroit_nb_pion(joueur):
     if joueur == 1:
         global NB_PP # mot clé global permet de changer la variable globale
@@ -141,6 +204,7 @@ def decroit_nb_pion(joueur):
     else:
         global NB_PV
         NB_PV -= 1
+        
 
 
 """
@@ -175,9 +239,7 @@ def saisie_direction(directions_possibles) -> int:
 """
     Renvoie la direction selon un int entré en parametre, bien entendu, pour 
         chacunes des fonctions, 0 signifie la droite, etc...
-        
     Cette fonction est utile pour donner les directions possibles à l'utilisateur
-        (uniquement utile pour l'utilisateur)
 """
 def get_direction(direction):
     if direction == 0:
@@ -188,14 +250,6 @@ def get_direction(direction):
         return "haut"
     else:
         return "bas"
-    
-
-# Retourne les pions de l'opposant
-# surtout utile pour verifier la validité d'un saut
-def get_pion_opposant(joueur):
-    if joueur == 1:
-        return PP # les pions opposés aux pions vides sont les pions pleins
-    return PV
 
 
 """
@@ -228,39 +282,48 @@ def est_mouvement_valide(grille, joueur, mouvement, direction, depart, arriveeSi
 
 
 """
-    Calcul la case d'arrivée selon une case de départ et une direction
+    Si le joueur choisit un pion mais qu'aucun mouvement n'est disponnible
 """
-def arrivee_simple(depart, direction) -> str:
-    arrivee = ""
-    if direction == 0:
-        arrivee = depart[0] + str(int(depart[1]) + 1) # a droite
-    elif direction == 1:
-        arrivee = depart[0] + str(int(depart[1]) - 1) # a gauche
-    elif direction == 2:
-        arrivee = chr(ord(depart[0]) - 1) + depart[1] # en haut
-    elif direction == 3:
-        arrivee = chr(ord(depart[0]) + 1) + depart[1] # en bas
+def aucun_mouvement(grille, joueur, depart):
+    while mouvement_possible(grille, joueur, depart) == -1:
+        print("Vous ne pouvez faire aucun mouvement a partir de cette case. Je vous suggère" +
+              " de redonner des coordonnées.")
+        depart = saisir_coord(grille, joueur)
     
-    return arrivee
-
+    return depart
 
 
 """
-    Meme commentaire
-"""
-def arrivee_saut(depart, direction) -> str:
-    arrivee = ""
-    if direction == 0:
-        arrivee = depart[0] + str(int(depart[1]) + 2) # a droite
-    elif direction == 1:
-        arrivee = depart[0] + str(int(depart[1]) - 2) # a gauche
-    elif direction == 2:
-        arrivee = chr(ord(depart[0]) - 2) + depart[1] # en haut
-    elif direction == 3:
-        arrivee = chr(ord(depart[0]) + 2) + depart[1] # en bas
+    Si le pion choisi ne peut se deplacer qu'avec le mouvement simple et qu'il n'y a
+    qu'une possibilite
+    Permet aussi au joueur de valider le mouvement
     
-    return arrivee
+    return -1 si l'utilisateur n'est pas d'accord pour effectuer le mouvement.
+"""
+def seul_mouv_simple_possible(grille, joueur, depart, direction):
+    print(f"Il n'y a qu'une seule direction possible ({get_direction(direction)})," +
+          " le mouvement simple s'effectue tout seul")
+    consentant = str(input("Est ce que cela vous convient (entrée | n)? ")).upper()
+    if consentant == "O" or consentant == "Y" or consentant == "OUI" or consentant == "":
+        return direction
+    else:
+        print("Il va falloir tout refaire.\n")
+        return -1
 
+
+"""
+    Seul le saut est possible; retourne la direction si l'utilisateur est d'accord
+        sinon retourne -1
+"""
+def seul_mouv_saut_possible(grille, joueur, depart, direction):
+    print(f"Il n'y a qu'une seule direction possible ({get_direction(direction)})," +
+          " le mouvement saut s'effectue tout seul")
+    consentant = str(input("Est ce que cela vous convient (entree | n)? ")).upper()
+    if consentant == "O" or consentant == "Y" or consentant == "OUI" or consentant == "":
+        return direction
+    else:
+        print("Il va falloir tout refaire.\n")
+        return -1
 
 
 """
@@ -287,6 +350,7 @@ def demande_mouvement():
         mouv = SAUT
     
     return mouv
+    
 
 
 """
@@ -298,23 +362,25 @@ def demande_mouvement():
 def demande_depart_mouv_dir(grille, joueur):
     print("Quel pion souhaitez vous deplacer ? ")
     depart = saisir_coord(grille, joueur)
+    if depart == -1:
+        return -1, -1, ""
+    
     direction = -1 # j'initialise la direction et le mouvement
     mouv = ""
     
-    # se référer à la fonction juste en dessous
     mouv_possible = mouvement_possible(grille, joueur, depart)
     
-    if mouv_possible == -1: # redemande de choisir un pion tant qu'il ne peut rien faire
+    if mouv_possible == -1:
         depart = aucun_mouvement(grille, joueur, depart)
         mouv_possible = mouvement_possible(grille, joueur, depart)
         
     
-    if mouv_possible == 1: # seul le mouvement simple est possible
+    if mouv_possible == 1:
         mouv = SIMPLE
         direction = direction_selon_mouv(grille, joueur, depart, mouv)
         
         
-    elif mouv_possible == 2: # seul le mouvement saut est possible
+    elif mouv_possible == 2:
         mouv = SAUT
         direction = direction_selon_mouv(grille, joueur, depart, mouv)
     
@@ -322,82 +388,13 @@ def demande_depart_mouv_dir(grille, joueur):
         mouv = demande_mouvement()
         direction = direction_selon_mouv(grille, joueur, depart, mouv)
         
-    while direction == -1: # cas ou l'utilisateur ne veut pas effectuer le mouvement proposé
-        print("Il va falloir tout refaire.\n")
+    while direction == -1:
         depart, mouv, direction= demande_depart_mouv_dir(grille, joueur)
     
 
     return depart, mouv, direction
 
 
-"""
-    Retourne -1 si aucun mouvement possible
-    Retourne 1 si mouvement simple possible (et pas saut)
-    Retourne 2 si mouvement saut possible (et pas simple)
-    Retourne 3 si les 2 mouvements sont possibles
-"""
-def mouvement_possible(grille, joueur, depart):
-    simple = possibilite_simple(grille, joueur, depart)
-    saut = possibilite_sauts(grille, joueur, depart)
-    
-    if simple == -1 and saut == -1:
-            return -1
-    
-    elif simple >= 0 and saut == -1:
-            return 1
-        
-    elif simple == -1 and saut >= 0:
-            return 2
-    
-    return 3
-
-
-"""
-    Si retour entre 0 et 3: direction unique case vide autour
-    Si retour == 5: plusieurs directions possible
-    Si retour == -1: aucune case vide autour
-"""
-def possibilite_simple(grille, joueur, depart) -> int:
-    case_vide_autour = []
-    for i in range(4):
-        arriveeSimple = arrivee_simple(depart, i)
-        if est_mouvement_valide(grille, joueur, SIMPLE, i, depart, arriveeSimple):
-            case_vide_autour.append(i)
-    
-    if len(case_vide_autour) == 1:
-        return case_vide_autour[0]
-    
-    elif len(case_vide_autour) == 0:
-        return -1
-    
-    return 5
-
-
-"""
-    Retourne -1 si il n'y a pas de saut possibles, si 1 seul saut possible retourne la direction
-        si plusieurs saut possibles retourne 5
-        
-    Si ce qui est retourné est compris entre 0 et 4 c'est une direction; -1 pas de saut;
-        5 c'est qu'il y a plusieurs sauts possibles
-        
-    Utile pour: enchainement (si possibilité de faire un saut) et faire le saut automatiquement
-        si possibilité unique
-"""
-def possibilite_sauts(grille, joueur, depart):
-    direction_possibles = []
-    
-    for i in range(4): # 4 cases orthogonales
-        arriveeSimple = arrivee_simple(depart, i)
-        if est_mouvement_valide(grille, joueur, SAUT, i, depart, arriveeSimple): # validité du saut
-            direction_possibles.append(i) # on ajoute la direction possible dans le tableau
-    
-    if len(direction_possibles) == 1:
-        return direction_possibles[0] # s'il n'y a qu'une direction possible la retourne
-    
-    elif len(direction_possibles) == 0:
-        return -1
-    
-    return 5
 
 
 """
@@ -430,77 +427,28 @@ def direction_selon_mouv(grille, joueur, depart, mouvement):
 
 
 
+
+
 """
-    Si le pion choisi ne peut se deplacer qu'avec le mouvement simple et qu'il n'y a
-    qu'une possibilite
-    Permet aussi au joueur de valider le mouvement
+    Retourne -1 si aucun mouvement possible
+    Retourne 1 si mouvement simple possible (et pas saut)
+    Retourne 2 si mouvement saut possible (et pas simple)
+    Retourne 3 si les 2 mouvements sont possibles
+"""
+def mouvement_possible(grille, joueur, depart):
+    simple = possibilite_simple(grille, joueur, depart)
+    saut = possibilite_sauts(grille, joueur, depart)
     
-    return -1 si l'utilisateur n'est pas d'accord pour effectuer le mouvement.
-"""
-def seul_mouv_simple_possible(grille, joueur, depart, direction):
-    print(f"Il n'y a qu'une seule direction possible ({get_direction(direction)})," +
-          " le mouvement simple s'effectue tout seul")
-    consentant = str(input("Est ce que cela vous convient (entrée | n)? ")).upper()
-    if consentant == "O" or consentant == "Y" or consentant == "OUI" or consentant == "":
-        return direction
-    else:
-        return -1
-
-
-"""
-    Seul le saut est possible; retourne la direction si l'utilisateur est d'accord
-        sinon retourne -1
-"""
-def seul_mouv_saut_possible(grille, joueur, depart, direction):
-    print(f"Il n'y a qu'une seule direction possible ({get_direction(direction)})," +
-          " le mouvement saut s'effectue tout seul")
-    consentant = str(input("Est ce que cela vous convient (entree | n)? ")).upper()
-    if consentant == "O" or consentant == "Y" or consentant == "OUI" or consentant == "":
-        return direction
-    else:
-        return -1
-
-
-"""
-    Retourne la liste des directions possibles pour le mouvement saut
+    if simple == -1 and saut == -1:
+            return -1
+    
+    elif simple >= 0 and saut == -1:
+            return 1
         
-"""
-def liste_directions_saut(grille, joueur, depart):
-    direction_possibles = []
+    elif simple == -1 and saut >= 0:
+            return 2
     
-    for i in range(4): # 4 cases orthogonales
-        arriveeSimple = arrivee_simple(depart, i)
-        if est_mouvement_valide(grille, joueur, SAUT, i, depart, arriveeSimple): # validité du saut
-            direction_possibles.append(i)
-    
-    return direction_possibles
-
-
-"""
-    Retourne la liste des directions possibles pour le mouvement simple
-"""
-def liste_directions_simple(grille, joueur, depart):
-    case_vide_autour = []
-    for i in range(4):
-        arriveeSimple = arrivee_simple(depart, i)
-        if est_mouvement_valide(grille, joueur, SIMPLE, i, depart, arriveeSimple):
-            case_vide_autour.append(i)
-    
-    return case_vide_autour
-
-
-
-"""
-    Si le joueur choisit un pion mais qu'aucun mouvement n'est disponnible
-"""
-def aucun_mouvement(grille, joueur, depart):
-    while mouvement_possible(grille, joueur, depart) == -1:
-        print("Vous ne pouvez faire aucun mouvement a partir de cette case. Je vous suggère" +
-              " de redonner des coordonnées.")
-        depart = saisir_coord(grille, joueur)
-    
-    return depart
-
+    return 3
 
 
 
@@ -515,6 +463,9 @@ def saisie_pour_mouvement(grille, joueur) -> list:
     print(f"C'est au joueur {joueur} de se deplacer. \n")
     
     depart, mouv, direction = demande_depart_mouv_dir(grille, joueur)
+    if depart == -1 and mouv == -1 and direction == "":
+        return -1
+    
     arriveeSimple = arrivee_simple(depart, direction)
     
     while not(est_mouvement_valide(grille, joueur, mouv, direction,\
@@ -531,28 +482,6 @@ def saisie_pour_mouvement(grille, joueur) -> list:
     
     return nouvelle_grille
 
-
-def enchainement(grille, joueur, depart):
-    nouvelle_grille = grille
-    while 2 <= mouvement_possible(grille, joueur, depart) <= 3: #saut possible a l'arrivee
-        print("Voici la grille après avoir sauté: \n")
-        affiche_grille(nouvelle_grille)
-        
-        print(f"Votre case d'arrivee: {depart}\n")
-        consentant = str(input("Vous pouvez refaire au moins un saut, voulez vous enchainer (entree | n) : ")).upper()
-        if consentant == "O" or consentant == "YES" or consentant == "OUI" \
-            or consentant == "":
-            direction = direction_selon_mouv(grille, joueur, depart, SAUT)
-            if direction == -1:
-                break # direction non valide, joueur ne veut pas continuer
-            
-            nouvelle_grille = appel_mouvement(grille, joueur, depart, direction, SAUT)
-            depart = arrivee_saut(depart, direction)
-        else:
-            break # fin enchainement, plus de saut possible
-    
-    return nouvelle_grille
-    
 
 
 """
@@ -573,6 +502,117 @@ def appel_mouvement(grille, joueur, depart, direction, mouvement):
     
     
     return nouvelle_grille
+
+
+
+"""
+    Calcul la case d'arrivée selon une case de départ et une direction
+"""
+def arrivee_simple(depart, direction) -> str:
+    arrivee = ""
+    if direction == 0:
+        arrivee = depart[0] + str(int(depart[1]) + 1) # a droite
+    elif direction == 1:
+        arrivee = depart[0] + str(int(depart[1]) - 1) # a gauche
+    elif direction == 2:
+        arrivee = chr(ord(depart[0]) - 1) + depart[1] # en haut
+    elif direction == 3:
+        arrivee = chr(ord(depart[0]) + 1) + depart[1] # en bas
+    
+    return arrivee
+
+
+"""
+    Meme commentaire
+"""
+def arrivee_saut(depart, direction) -> str:
+    arrivee = ""
+    if direction == 0:
+        arrivee = depart[0] + str(int(depart[1]) + 2) # a droite
+    elif direction == 1:
+        arrivee = depart[0] + str(int(depart[1]) - 2) # a gauche
+    elif direction == 2:
+        arrivee = chr(ord(depart[0]) - 2) + depart[1] # en haut
+    elif direction == 3:
+        arrivee = chr(ord(depart[0]) + 2) + depart[1] # en bas
+    
+    return arrivee
+
+
+"""
+    Retourne -1 si il n'y a pas de saut possibles, si 1 seul saut possible retourne la direction
+        si plusieurs saut possibles retourne 5
+        
+    Si ce qui est retourné est compris entre 0 et 4 c'est une direction; -1 pas de saut;
+        5 c'est qu'il y a plusieurs sauts possibles
+        
+    Utile pour: enchainement (si possibilité de faire un saut) et faire le saut automatiquement
+        si possibilité unique
+"""
+def possibilite_sauts(grille, joueur, depart):
+    direction_possibles = []
+    
+    for i in range(4): # 4 cases orthogonales
+        arriveeSimple = arrivee_simple(depart, i)
+        if est_mouvement_valide(grille, joueur, SAUT, i, depart, arriveeSimple): # validité du saut
+            direction_possibles.append(i) # on ajoute la direction possible dans le tableau
+    
+    if len(direction_possibles) == 1:
+        return direction_possibles[0] # s'il n'y a qu'une direction possible la retourne
+    
+    elif len(direction_possibles) == 0:
+        return -1
+    
+    return 5
+
+
+
+"""
+    Retourne la liste des directions possibles pour le mouvement saut
+        
+"""
+def liste_directions_saut(grille, joueur, depart):
+    direction_possibles = []
+    
+    for i in range(4): # 4 cases orthogonales
+        arriveeSimple = arrivee_simple(depart, i)
+        if est_mouvement_valide(grille, joueur, SAUT, i, depart, arriveeSimple): # validité du saut
+            direction_possibles.append(i)
+    
+    return direction_possibles
+
+"""
+    Si retour entre 0 et 3: direction unique case vide autour
+    Si retour == 5: plusieurs directions possible
+    Si retour == -1: aucune case vide autour
+"""
+def possibilite_simple(grille, joueur, depart) -> int:
+    case_vide_autour = []
+    for i in range(4):
+        arriveeSimple = arrivee_simple(depart, i)
+        if est_mouvement_valide(grille, joueur, SIMPLE, i, depart, arriveeSimple):
+            case_vide_autour.append(i)
+    
+    if len(case_vide_autour) == 1:
+        return case_vide_autour[0]
+    
+    elif len(case_vide_autour) == 0:
+        return -1
+    
+    return 5
+
+
+"""
+    Retourne la liste des directions possibles pour le mouvement simple
+"""
+def liste_directions_simple(grille, joueur, depart):
+    case_vide_autour = []
+    for i in range(4):
+        arriveeSimple = arrivee_simple(depart, i)
+        if est_mouvement_valide(grille, joueur, SIMPLE, i, depart, arriveeSimple):
+            case_vide_autour.append(i)
+    
+    return case_vide_autour
 
 
 """
@@ -600,21 +640,110 @@ def mouvement_saut(grille, joueur, depart, arrivee, direction, caseEntreDepartAr
     return grille
 
 
-"""
-    Les deux fonctions suivantes n'ont pas de rapport entre elles (pour l'instant).
-        Dans la fonction jeu (où tous les tours seront joués) de l'atelier suivant
-        on appellera la fonction definie_nb_pions pour initialiser les nombres de pions
-        globaux. (Utile si on ne joue pas sur la grille de depart -sinon on initialisera
-                  directement a 24-)
+
+def enchainement(grille, joueur, depart):
+    nouvelle_grille = grille
+    while 2 <= mouvement_possible(grille, joueur, depart) <= 3: #saut possible a l'arrivee
+        print("Voici la grille après avoir sauté: \n")
+        affiche_grille(nouvelle_grille)
         
-    Comme les pions globaux sont maintenant definis, la fonction est_partie_finie
-        vérifie simplement qu'il y a strictement plus de 6 pions pour chacun des joueurs
+        print(f"Votre case d'arrivee: {depart}\n")
+        consentant = str(input("Vous pouvez refaire au moins un saut, voulez vous enchainer (entree | n) : ")).upper()
+        if consentant == "O" or consentant == "YES" or consentant == "OUI" \
+            or consentant == "":
+            direction = direction_selon_mouv(grille, joueur, depart, SAUT)
+            if direction == -1:
+                break # direction non valide, joueur ne veut pas continuer
+            
+            nouvelle_grille = appel_mouvement(grille, joueur, depart, direction, SAUT)
+            depart = arrivee_saut(depart, direction)
+        else:
+            break # fin enchainement, plus de saut possible
     
-    Inutiles pour l'instant !!
+    return nouvelle_grille
+
+
 """
-def definie_nb_pions(grille):
+    Fonction de jeu: permet de charger une partie si l'utilisateur le veut et a en effet
+        une sauvegarde de faite.
+    Tant que un des 2 joueurs a plus de 6 pions, appelle la fonction saisie pour mouvement
+"""
+def jeu(grille):
+    print("Rappel des règles: lorsqu'un joueur a moins de 6 pions, il perd. Les deplacements ne" + 
+          " se font qu'orthogonalement. Il y a 2 deplacements possibles, le mouvement simple " + 
+          "qui permet de deplacer un pion de 1 case (case vide); il y a aussi le mouvement saut qui permet " +
+          "de faire un deplacement de 2 cases et de manger un pion ennemi par la même occasion." +
+          " lorsque d'autres sauts sont possibles, le joueur peut les enchainer en un seul tour.\n")
+    print("\n Vous pourrez à chaque saisie de pions choisir de sauvegarder la partie avec le" +
+          " mot clé: \"save\". Vous écraserez la sauvegarde précédente.\n")
     global NB_PP, NB_PV
+    joueur = 1
     
+    charger_partie = str(input("Voulez-vous charger la derniere partie sauvegardée (o | n)? ")).upper()
+    
+    if charger_partie == "O":
+        grille, joueur = charge_partie(grille, joueur)
+    
+    
+    affiche_grille(grille)
+    NB_PV, NB_PP = get_nb_pions(grille)
+    
+    while (NB_PP > 6) and (NB_PV > 6):
+        ancienne_grille = copie_grille(grille)
+        nouvelle_grille = saisie_pour_mouvement(grille, joueur)
+        if nouvelle_grille == -1:
+            break
+        
+        joueur = (joueur % 2) + 1
+        
+        affiche_deux_grilles(ancienne_grille, nouvelle_grille)
+        grille = copie_grille(nouvelle_grille)
+        print(f"\n\nNombre de pions vide: {NB_PV}, nombre de pions plein: {NB_PP}\n")
+    
+    
+    print(f"\nLa partie est finie, le joueur {(joueur % 2) + 1} a gagné !!")
+
+
+"""
+    Cree un fichier si non existant qui s'appelle sauvegarde_partie sinon écrase sauvegarde
+        précédente.
+    Dans ce fichier il y a le joueur et la grille entrée en paramètre
+"""
+def sauvegarde_partie(grille, joueur):
+    file = open("sauvegarde_partie.txt", "w")
+    file.write(str(joueur) + " " + "\n")
+    for x in grille:
+        file.write(str(x))
+        file.write("\n")
+
+"""
+    Retourne le grille chargée à partir du fichier sauvegarde_partie et le joueur actuel
+"""
+def charge_partie(grille, joueur):
+    if os.path.exists("sauvegarde_partie.txt"):
+        file = open("sauvegarde_partie.txt", "r")
+        lecture_fichier = file.readlines()
+        new_joueur = int(lecture_fichier[0][0])
+        nouvelle_grille = [[], [], [], [], [], [], []]
+        
+        for i in range(1, len(lecture_fichier)):
+            next_case_to_change = 0
+            for j in range(len(lecture_fichier[i])):
+                caractere = lecture_fichier[i][j]
+                if caractere in [PP, PV, CV] and lecture_fichier[i][j-1] != ",":
+                    nouvelle_grille[i-1].append(caractere)
+                    next_case_to_change += 1
+        
+        return nouvelle_grille, new_joueur
+            
+    else:
+        print("Vous n'avez pas de parties sauvegardées."+
+              " Vous jouerez la partie depuis le début")
+        return grille, joueur
+
+
+
+def get_nb_pions(grille):
     nb_pp = 0
     nb_pv = 0
     for i in range(7):
@@ -624,20 +753,8 @@ def definie_nb_pions(grille):
             elif grille[i][j] == PV:
                 nb_pv += 1
     
-    NB_PV, NB_PP = nb_pv, nb_pp
+    return nb_pv, nb_pp
 
-
-
-def est_partie_finie(grille):
-    global NB_PP, NB_PV
-
-    if NB_PV <= 6 or NB_PP <= 6:
-        return True
-    
-    return False
-
-
-######## TESTS ########
 
 def test_est_dans_grille():
     print("\nTest de la fonction est_dans_grille...")
@@ -673,15 +790,14 @@ def test_est_mouvement_valide():
     depart = "F4"
     direction = 2
     joueur = 1
-    arriveeSimple = arrivee_simple(depart, direction)
     print("\nTest de la fonction test_est_mouvement_valide...")
-    assert not est_mouvement_valide(grille, joueur, SIMPLE, direction, depart, arriveeSimple)
-    assert not est_mouvement_valide(grille, joueur, SAUT, direction, depart, arriveeSimple)
-    assert est_mouvement_valide(grille, joueur, SAUT, direction, "G2", arrivee_simple("G2", direction))
-    assert not est_mouvement_valide(grille, 2, SAUT, 0, "c4", arrivee_simple("C4", 0))
-    assert est_mouvement_valide(grille, 2, SIMPLE, 3, "c4", arrivee_simple("C4", 3))
-    assert not est_mouvement_valide(grille, 2, SAUT, 0, "A3", arrivee_simple("A4", 0))
-    assert not est_mouvement_valide(grille, joueur, SIMPLE, 3, "g2", arrivee_simple("G2", 3))
+    assert not est_mouvement_valide(grille, joueur, SIMPLE, direction, depart)
+    assert not est_mouvement_valide(grille, joueur, SAUT, direction, depart)
+    assert est_mouvement_valide(grille, joueur, SAUT, direction, "G2")
+    assert not est_mouvement_valide(grille, 2, SAUT, 0, "c4")
+    assert est_mouvement_valide(grille, 2, SIMPLE, 3, "c4")
+    assert not est_mouvement_valide(grille, 2, SAUT, 0, "A3")
+    assert not est_mouvement_valide(grille, joueur, SIMPLE, 3, "g2")
     print("Ok !")
 
 
@@ -724,30 +840,33 @@ def fnct_generale_de_tests():
     test_mouvement_uniq()
     test_est_au_bon_format()
     test_est_dans_grille()
-
-
-
+    
 
 
 if __name__ == "__main__":
-    fnct_generale_de_tests()
-    print("\n")
-    grille = grille_depart
-    print("Si vous n'entrez rien (mauvaise saisie ou juste entrée), le grille est celle de départ.")
-    saisie_grille = str(input("Sur quelle grille souhaitez-vous jouer (milieu(2) | fin(3))? "))
+    print("Voulez-vous faire une partie joueur contre joueur (1) ou plûtot contre ordinateur (2) ?")
+    JoueurContre = str(input(""))
+    while JoueurContre not in ["1", "2"]:
+        JoueurContre = str(input("Veuillez taper 1 ou 2 svp: "))
     
-    if saisie_grille == "milieu" or saisie_grille == 2:
-        grille = grille_milieu
-    elif saisie_grille == "fin" or saisie_grille == 3:
-        grille = grille_fin
-    else:
-        print("Vous jouerez donc sur la grille de départ.")
+    if JoueurContre == "1":
+        print("Si vous n'entrez rien (mauvaise saisie ou juste entrée), le grille est celle de départ.")
+        saisie_grille = str(input("Sur quelle grille souhaitez-vous jouer (milieu(2) | fin(3))? "))
+        grille = grille_depart
         
+        if saisie_grille == "milieu" or saisie_grille == 2:
+            grille = grille_milieu
+        elif saisie_grille == "fin" or saisie_grille == 3:
+            grille = grille_fin
+        else:
+            print("Vous jouerez donc sur la grille de départ.\n")
         
-    affiche_grille(grille)
-    grille = saisie_pour_mouvement(grille, 1)
-    print("\n Voici la grille après votre deplacement: \n")
-    affiche_grille(grille)
+        jeu(grille)
     
+    elif JoueurContre == "2":
+        pass
+
+
     
-    
+
+
