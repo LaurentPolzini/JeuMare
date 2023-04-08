@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*- 
+# -*- coding: utf-8 -*-
 import os
 import random
 import time
@@ -774,10 +774,11 @@ def jeuJcJ(grille):
     global NB_PP, NB_PV
     joueur = 1
     
-    charger_partie = str(input("Voulez-vous charger la derniere partie sauvegardée (o | n)? ")).upper()
-    
+    if os.path.exists("sauvegarde_partie.txt"):
+        charger_partie = str(input("Voulez-vous charger la derniere partie sauvegardée (o | n)? ")).upper()
+        
     if charger_partie == "O":
-        grille, joueur = charge_partie(grille, joueur)
+        grille, joueur = charge_partie()
     
     
     affiche_grille(grille)
@@ -827,10 +828,11 @@ def jeuJcO(grille):
     print("Vous allez jouer contre un ordinateur. Voulez-vous être le premier joueur (entrée ou 2)?: ")
     joueur = str(input(""))
     
-    charger_partie = str(input("Voulez-vous charger la derniere partie sauvegardée (o | n)? ")).upper()
+    if os.path.exists("sauvegarde_partie.txt"):
+        charger_partie = str(input("Voulez-vous charger la derniere partie sauvegardée (o | n)? ")).upper()
     
     if charger_partie == "O":
-        grille, joueur = charge_partie(grille, joueur)
+        grille, joueur = charge_partie()
     
     
     affiche_grille(grille)
@@ -923,25 +925,19 @@ def sauvegarde_partie(grille, joueur):
 """
     Retourne le grille chargée à partir du fichier sauvegarde_partie et le joueur actuel
 """
-def charge_partie(grille, joueur):
-    if os.path.exists("sauvegarde_partie.txt"):
-        file = open("sauvegarde_partie.txt", "r")
-        lecture_fichier = file.readlines()
-        new_joueur = int(lecture_fichier[0][0])
-        nouvelle_grille = [[], [], [], [], [], [], []]
-        
-        for i in range(1, len(lecture_fichier)):
-            for j in range(len(lecture_fichier[i])):
-                caractere = lecture_fichier[i][j]
-                if caractere in [PP, PV, CV] and lecture_fichier[i][j-1] != ",":
-                    nouvelle_grille[i-1].append(caractere)
-        
-        return nouvelle_grille, new_joueur
-            
-    else:
-        print("Vous n'avez pas de parties sauvegardées."+
-              " Vous jouerez avec la grille séléctionnée précédement.")
-        return grille, joueur
+def charge_partie():
+    file = open("sauvegarde_partie.txt", "r")
+    lecture_fichier = file.readlines()
+    new_joueur = int(lecture_fichier[0][0])
+    nouvelle_grille = [[], [], [], [], [], [], []]
+    
+    for i in range(1, len(lecture_fichier)):
+        for j in range(len(lecture_fichier[i])):
+            caractere = lecture_fichier[i][j]
+            if caractere in [PP, PV, CV] and lecture_fichier[i][j-1] != ",":
+                nouvelle_grille[i-1].append(caractere)
+    
+    return nouvelle_grille, new_joueur
 
 
 
@@ -1082,6 +1078,6 @@ if __name__ == "__main__":
     
     elif JoueurContreOrdiOUJoueur == "3":
         jeuOcO(grille)
-
+    
 
     
