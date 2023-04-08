@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*- 
 import os
+import random
+import time
 
 
 PV : str = '○' # Pion Vide
@@ -31,6 +33,14 @@ grille_milieu = [[PP, PP, PP, CV, CV, CV, CV],
                  [CV, CV, CV, PV, PV, PV, CV],
                  [PP, PP, CV, PV, CV, CV, CV],
                  [CV, PV, PV, CV, CV, CV, CV]]
+
+grille_enchainement = [[PP, PP, PV, PP, CV, PP, CV],
+                       [CV, CV, PP, CV, PP, CV, PP],
+                       [CV, PP, CV, PP, CV, PP, CV],
+                       [CV, CV, CV, CV, CV, CV, CV],
+                       [CV, CV, CV, CV, CV, CV, CV],
+                       [CV, CV, CV, CV, CV, CV, CV],
+                       [CV, CV, CV, CV, CV, CV, CV]]
 
 """
     Enchainement possible des Noirs et des Blancs mettant fin à la partie 
@@ -98,17 +108,19 @@ def saisir_coord(grille, joueur) -> str:
         return -1
 
     while not (est_au_bon_format(coord) and est_dans_grille(coord[0], coord[1])):
-        coord = str(input("Entrez une coordonnée d'un de vos pions (entre A1 et G7): ")).upper()
+        coord = str(input("Entrez une coordonnée d'un de vos pions (entre A1 et G7) (save ou abandonner): ")).upper()
+        if coord == "ABANDONNER":
+            return -1
     
     while not (est_au_bon_format(coord) and est_dans_grille(coord[0], coord[1])) \
         or case(grille, coord) != JOUEUR.get(joueur):
         print("Etes vous sur de jouer le bon pion ? ")
-        coord = str(input("Entrez une coordonnée d'un de vos pions (entre A1 et G7): ")).upper()
+        coord = str(input("Entrez une coordonnée d'un de vos pions (entre A1 et G7) (save ou abandonner): ")).upper()
+        if coord == "ABANDONNER":
+            return -1
     
     
     return coord
-
-
 
 
 """
@@ -459,8 +471,7 @@ def mouvement_possible(grille, joueur, depart):
     
     La grille changée est retournée par la fonction
 """
-def saisie_pour_mouvement(grille, joueur) -> list:
-    print(f"C'est au joueur {joueur} de se deplacer. \n")
+def tourJoueur(grille, joueur) -> list:
     
     depart, mouv, direction = demande_depart_mouv_dir(grille, joueur)
     if depart == -1 and mouv == -1 and direction == "":
@@ -481,6 +492,97 @@ def saisie_pour_mouvement(grille, joueur) -> list:
         
     
     return nouvelle_grille
+
+
+"""
+    Prend toutes les positions de pions possibles
+    Y associe toutes les directions possibles
+    
+    Choisi un pion au hasard tant qu'il y a des deplacements possibles
+    Choisi un déplacement au hasard et enfin y associe un direction
+    
+    Entre toutes ces coordonéees et effectue le mouvement
+    Si deplacement = saut, regarde si peut refaire saut
+    si oui, choisi au hasard d'en refaire.
+"""
+def tourOrdinateur(grille, joueur):
+    pionDepart, mouvement, direction = determineDepartMouvementDirection(grille, joueur)
+    
+    nouvelle_grille = appel_mouvement(grille, joueur, pionDepart, direction, mouvement)
+    
+    # ce qui suit est l'enchainement
+    while (2 <= mouvement_possible(grille, joueur, pionDepart) <= 3):
+        pionDepart = arrivee_saut(pionDepart, direction)
+        enchaine = random.randint(0, 1) # 1 enchaine sinon non
+        if (enchaine == 1):
+            directions = liste_directions_saut(grille, joueur, pionDepart)
+            if (directions != []):
+                direction = directions[random.randint(0, len(directions) - 1)]
+                nouvelle_grille = appel_mouvement(grille, joueur, pionDepart, direction, SAUT)
+            else:
+                break
+        
+        else:
+            break
+    
+    return nouvelle_grille
+
+
+def determineDepartMouvementDirection(grille, joueur):
+    # toutesDirection est du style {'A3' : {SAUT : [1,2], SIMPLE : [3, 4]}}
+    toutPionsEtDeplacements = initieDeplacement(grille, joueur, pionDepartOrdi(grille, joueur))
+    # pionDepart est donc égal à une valeur du style A3
+    pionDepart = list(toutPionsEtDeplacements)[random.randint(0, len(toutPionsEtDeplacements) - 1)]
+    
+    # tousMouvementsPionDepart est du style {SAUT : [1,2], SIMPLE : [3, 4]}
+    tousMouvementsPionDepart = toutPionsEtDeplacements[pionDepart]
+    # ainsi, mouvement = SAUT ou SIMPLE
+
+    while (len(tousMouvementsPionDepart) == 0):
+        pionDepart = list(toutPionsEtDeplacements)[random.randint(0, len(toutPionsEtDeplacements) - 1)]
+        tousMouvementsPionDepart = toutPionsEtDeplacements[pionDepart]
+
+    mouvement = list(tousMouvementsPionDepart)[random.randint(0, len(tousMouvementsPionDepart) - 1)]
+    # direction = une direction parmis le mouvement
+    
+    toutesDirection = toutPionsEtDeplacements[pionDepart][mouvement]
+    direction = toutesDirection[random.randint(0, len(toutesDirection) - 1)]
+    
+    return pionDepart, mouvement, direction
+    
+
+
+
+"""
+    Va stocker dans un dictionnaire toutes les positions des pions alliés
+"""
+def pionDepartOrdi(grille, joueur):
+    pionsDispo = {}
+    for i in range(7):
+        for j in range(7):
+            if grille[i][j] == JOUEUR.get(joueur):
+                pionsDispo[chr(i + 65) + chr(j + 49)] = {}
+                
+    return pionsDispo
+
+
+"""
+    Initie toutes les directions possibles:
+        un dictionnaire pour tous les mouvements simple
+        et un autre pour tous les sauts.
+"""
+def initieDeplacement(grille, joueur, pionsDict):
+    pionsAvecDirections = pionsDict
+    for coord in pionsDict:
+        directSimple = liste_directions_simple(grille, joueur, coord)
+        if len(directSimple) != 0:
+            pionsAvecDirections[coord][SIMPLE] = directSimple
+            
+        directSaut = liste_directions_saut(grille, joueur, coord)
+        if len(directSaut) != 0:
+            pionsAvecDirections[coord][SAUT] = directSaut
+    
+    return pionsAvecDirections
 
 
 
@@ -668,14 +770,7 @@ def enchainement(grille, joueur, depart):
         une sauvegarde de faite.
     Tant que un des 2 joueurs a plus de 6 pions, appelle la fonction saisie pour mouvement
 """
-def jeu(grille):
-    print("Rappel des règles: lorsqu'un joueur a moins de 6 pions, il perd. Les deplacements ne" + 
-          " se font qu'orthogonalement. Il y a 2 deplacements possibles, le mouvement simple " + 
-          "qui permet de deplacer un pion de 1 case (case vide); il y a aussi le mouvement saut qui permet " +
-          "de faire un deplacement de 2 cases et de manger un pion ennemi par la même occasion." +
-          " lorsque d'autres sauts sont possibles, le joueur peut les enchainer en un seul tour.\n")
-    print("\n Vous pourrez à chaque saisie de pions choisir de sauvegarder la partie avec le" +
-          " mot clé: \"save\". Vous écraserez la sauvegarde précédente.\n")
+def jeuJcJ(grille):
     global NB_PP, NB_PV
     joueur = 1
     
@@ -690,7 +785,9 @@ def jeu(grille):
     
     while (NB_PP > 6) and (NB_PV > 6):
         ancienne_grille = copie_grille(grille)
-        nouvelle_grille = saisie_pour_mouvement(grille, joueur)
+        
+        print(f"C'est au joueur {joueur} de se deplacer. \n")
+        nouvelle_grille = tourJoueur(grille, joueur)
         if nouvelle_grille == -1:
             break
         
@@ -704,6 +801,111 @@ def jeu(grille):
     print(f"\nLa partie est finie, le joueur {(joueur % 2) + 1} a gagné !!")
 
 
+def jeuOcO(grille):
+    global NB_PV, NB_PP
+    print("Vous allez observer un jeu entre 2 ordinateurs:\n")
+    affiche_grille(grille)
+    NB_PV, NB_PP = get_nb_pions(grille)
+    joueur = 1
+    
+    while (NB_PP > 6) and (NB_PV > 6):
+        ancienne_grille = copie_grille(grille)
+        nouvelle_grille = tourOrdinateur(grille, joueur)
+        time.sleep(1)
+        joueur = (joueur % 2) + 1
+        
+        affiche_deux_grilles(ancienne_grille, nouvelle_grille)
+        grille = copie_grille(nouvelle_grille)
+        print(f"\n\nNombre de pions vide: {NB_PV}, nombre de pions plein: {NB_PP}\n")
+    
+    
+    print(f"\nLa partie est finie, le joueur {(joueur % 2) + 1} a gagné !!")
+
+
+def jeuJcO(grille):
+    global NB_PV, NB_PP
+    print("Vous allez jouer contre un ordinateur. Voulez-vous être le premier joueur (entrée ou 2)?: ")
+    joueur = str(input(""))
+    
+    charger_partie = str(input("Voulez-vous charger la derniere partie sauvegardée (o | n)? ")).upper()
+    
+    if charger_partie == "O":
+        grille, joueur = charge_partie(grille, joueur)
+    
+    
+    affiche_grille(grille)
+    NB_PV, NB_PP = get_nb_pions(grille)
+    
+    if joueur == "" or joueur == "1":
+        joueur = 1
+        jeuJcOJ1(grille)
+    else:
+        joueur = 2
+        jeuJcOJ2(grille)
+    
+    #preuve intengible que le joueur en question est gagnant
+    print(f"\n\nNombre de pions vide: {NB_PV}, nombre de pions plein: {NB_PP}\n")
+    print(f"\nLa partie est finie, le joueur {(joueur % 2) + 1} a gagné !!")
+ 
+    
+ 
+def jeuJcOJ1(grille):
+    while (NB_PP > 6) and (NB_PV > 6):
+        ancienne_grille = copie_grille(grille)
+        print("C'est à vous de jouer (J1).\n")
+        
+        nouvelle_grille = tourJoueur(grille, 1)
+        if nouvelle_grille == -1:
+            break
+        
+        print("Voici votre déplacement:\n")
+        affiche_deux_grilles(ancienne_grille, nouvelle_grille)
+        time.sleep(3)
+        
+        
+        grille = copie_grille(nouvelle_grille)
+        
+        if (NB_PP > 6) and (NB_PV > 6):
+            ancienne_grille = copie_grille(grille)
+            nouvelle_grille = tourOrdinateur(grille, 2)
+   
+        else:
+            break
+        
+        
+        print("Le déplacement de l'odinateur\n")
+        affiche_deux_grilles(ancienne_grille, nouvelle_grille)
+        grille = copie_grille(nouvelle_grille)
+       
+        
+       
+def jeuJcOJ2(grille):
+    while (NB_PP > 6) and (NB_PV > 6):
+        ancienne_grille = copie_grille(grille)
+        nouvelle_grille = tourOrdinateur(grille, 2)
+        affiche_deux_grilles(ancienne_grille, nouvelle_grille)
+        
+        grille = copie_grille(nouvelle_grille)
+        
+        if (NB_PP > 6) and (NB_PV > 6):
+            ancienne_grille = copie_grille(grille)
+            
+            print("C'est à vous de jouer (J1).\n")
+            nouvelle_grille = tourJoueur(grille, 1)
+            
+            if nouvelle_grille == -1:
+                break
+            
+        else:
+            break
+        
+        print("Voici votre déplacement:\n")
+        affiche_deux_grilles(ancienne_grille, nouvelle_grille)
+        time.sleep(3)
+        grille = copie_grille(nouvelle_grille)
+    
+
+
 """
     Cree un fichier si non existant qui s'appelle sauvegarde_partie sinon écrase sauvegarde
         précédente.
@@ -715,6 +917,8 @@ def sauvegarde_partie(grille, joueur):
     for x in grille:
         file.write(str(x))
         file.write("\n")
+    
+    print("Sauvegarde bien effectuée !\n")
 
 """
     Retourne le grille chargée à partir du fichier sauvegarde_partie et le joueur actuel
@@ -727,18 +931,16 @@ def charge_partie(grille, joueur):
         nouvelle_grille = [[], [], [], [], [], [], []]
         
         for i in range(1, len(lecture_fichier)):
-            next_case_to_change = 0
             for j in range(len(lecture_fichier[i])):
                 caractere = lecture_fichier[i][j]
                 if caractere in [PP, PV, CV] and lecture_fichier[i][j-1] != ",":
                     nouvelle_grille[i-1].append(caractere)
-                    next_case_to_change += 1
         
         return nouvelle_grille, new_joueur
             
     else:
         print("Vous n'avez pas de parties sauvegardées."+
-              " Vous jouerez la partie depuis le début")
+              " Vous jouerez avec la grille séléctionnée précédement.")
         return grille, joueur
 
 
@@ -842,31 +1044,44 @@ def fnct_generale_de_tests():
     test_est_dans_grille()
     
 
-
+# 
 if __name__ == "__main__":
-    print("Voulez-vous faire une partie joueur contre joueur (1) ou plûtot contre ordinateur (2) ?")
-    JoueurContre = str(input(""))
-    while JoueurContre not in ["1", "2"]:
-        JoueurContre = str(input("Veuillez taper 1 ou 2 svp: "))
+    print("\nRappel des règles: lorsqu'un joueur a moins de 6 pions, il perd. Les deplacements ne" + 
+          " se font qu'orthogonalement. Il y a 2 deplacements possibles, le mouvement simple " + 
+          "qui permet de deplacer un pion de 1 case (case vide); il y a aussi le mouvement saut qui permet " +
+          "de faire un deplacement de 2 cases et de manger un pion ennemi par la même occasion." +
+          " lorsque d'autres sauts sont possibles, le joueur peut les enchainer en un seul tour.\n")
+    print("\n Vous pourrez à chaque saisie de pions choisir de sauvegarder la partie avec le" +
+          " mot clé: \"save\". Vous écraserez la sauvegarde précédente. Vous pourrez également"
+          + " abandonner avec le mot clé \"abandonner\".\n")
     
-    if JoueurContre == "1":
-        print("Si vous n'entrez rien (mauvaise saisie ou juste entrée), le grille est celle de départ.")
-        saisie_grille = str(input("Sur quelle grille souhaitez-vous jouer (milieu(2) | fin(3))? "))
-        grille = grille_depart
-        
-        if saisie_grille == "milieu" or saisie_grille == 2:
-            grille = grille_milieu
-        elif saisie_grille == "fin" or saisie_grille == 3:
-            grille = grille_fin
-        else:
-            print("Vous jouerez donc sur la grille de départ.\n")
-        
-        jeu(grille)
+    print("\nVoulez-vous faire une partie joueur contre joueur (1)" +
+          " ou plûtot contre ordinateur (2) (avec 3 vous pourrez voir"+
+          " une partie ordi contre ordi?")
     
-    elif JoueurContre == "2":
-        pass
+    JoueurContreOrdiOUJoueur = str(input(""))
+    while JoueurContreOrdiOUJoueur not in ["1", "2", "3"]:
+        JoueurContreOrdiOUJoueur = str(input("Veuillez taper 1 ou 2 svp: "))
+    
+    print("Si vous n'entrez rien (mauvaise saisie ou juste entrée), le grille est celle de départ.")
+    saisie_grille = str(input("Sur quelle grille souhaitez-vous jouer (milieu(2) | fin(3))? "))
+    grille = grille_depart
+    
+    if saisie_grille == "milieu" or saisie_grille == 2:
+        grille = grille_milieu
+    elif saisie_grille == "fin" or saisie_grille == 3:
+        grille = grille_fin
+    else:
+        print("La grille de départ a été choisi.\n")
+    
+    if JoueurContreOrdiOUJoueur == "1":
+        jeuJcJ(grille)
+    
+    elif JoueurContreOrdiOUJoueur == "2":
+        jeuJcO(grille)
+    
+    elif JoueurContreOrdiOUJoueur == "3":
+        jeuOcO(grille)
 
 
     
-
-
